@@ -1,0 +1,1130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>DataClean AI — Smart Data Cleaning</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+:root{
+  --bg:#05050a;--surface:#0f0f18;--surface2:#181825;--surface3:#1f1f30;
+  --border:#252535;--border2:#303048;
+  --accent:#00f5aa;--accent-dim:rgba(0,245,170,0.12);
+  --accent2:#6c63ff;--accent3:#ff5e7a;--gold:#ffc84a;
+  --text:#eeeef8;--muted:#5a5a78;--muted2:#8888aa;
+  --success:#00f5aa;--warning:#ffc84a;--danger:#ff5e7a;
+  --radius:14px;--radius-sm:8px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'JetBrains Mono',monospace;min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,245,170,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,245,170,0.025) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:0;}
+.orb{position:fixed;border-radius:50%;filter:blur(100px);pointer-events:none;z-index:0;}
+.orb1{width:500px;height:500px;background:rgba(0,245,170,0.055);top:-150px;right:-150px;animation:drift1 12s ease-in-out infinite;}
+.orb2{width:400px;height:400px;background:rgba(108,99,255,0.055);bottom:-100px;left:-100px;animation:drift2 10s ease-in-out infinite;}
+@keyframes drift1{0%,100%{transform:translate(0,0)}50%{transform:translate(-40px,30px)}}
+@keyframes drift2{0%,100%{transform:translate(0,0)}50%{transform:translate(30px,-40px)}}
+.page{position:relative;z-index:1;min-height:100vh;}
+.container{max-width:960px;margin:0 auto;padding:0 20px;}
+
+/* NAV */
+nav{position:sticky;top:0;z-index:100;padding:16px 0;border-bottom:1px solid var(--border);backdrop-filter:blur(20px);background:rgba(5,5,10,0.85);}
+.nav-inner{display:flex;align-items:center;justify-content:space-between;gap:16px;}
+.nav-logo{font-family:'Syne',sans-serif;font-weight:800;font-size:20px;letter-spacing:-0.03em;cursor:pointer;}
+.nav-logo span{color:var(--accent);}
+.nav-actions{display:flex;gap:10px;align-items:center;}
+.nav-user{display:none;align-items:center;gap:10px;}
+.nav-user.show{display:flex;}
+.user-avatar{width:32px;height:32px;border-radius:50%;background:var(--accent-dim);border:1.5px solid var(--accent);display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--accent);font-weight:700;}
+.user-name{font-size:12px;color:var(--muted2);}
+.plan-badge{font-size:10px;padding:3px 8px;border-radius:100px;font-weight:600;letter-spacing:0.05em;}
+.plan-badge.free{background:rgba(90,90,120,0.3);color:var(--muted2);border:1px solid var(--border2);}
+.plan-badge.pro{background:rgba(255,200,74,0.15);color:var(--gold);border:1px solid rgba(255,200,74,0.3);}
+
+/* BUTTONS */
+.btn{padding:9px 18px;border-radius:var(--radius-sm);font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;cursor:pointer;transition:all 0.2s;border:none;letter-spacing:0.02em;}
+.btn-ghost{background:transparent;color:var(--muted2);border:1px solid var(--border2);}
+.btn-ghost:hover{color:var(--text);border-color:var(--accent);}
+.btn-accent{background:var(--accent);color:#050510;font-weight:700;}
+.btn-accent:hover{transform:translateY(-1px);box-shadow:0 8px 28px rgba(0,245,170,0.35);}
+.btn-outline{background:transparent;color:var(--accent);border:1.5px solid var(--accent);}
+.btn-outline:hover{background:var(--accent-dim);}
+.btn-gold{background:linear-gradient(135deg,#ffc84a,#ff9d3a);color:#1a0a00;font-weight:700;}
+.btn-gold:hover{transform:translateY(-1px);box-shadow:0 8px 28px rgba(255,200,74,0.4);}
+.btn-danger{background:rgba(255,94,122,0.15);color:var(--danger);border:1px solid rgba(255,94,122,0.3);}
+.btn-full{width:100%;padding:14px;font-size:14px;}
+.btn:disabled{opacity:0.35;cursor:not-allowed;transform:none!important;box-shadow:none!important;}
+
+/* SCREENS */
+.screen{display:none;animation:fadeUp 0.4s ease;}
+.screen.active{display:block;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+
+/* LANDING */
+#screen-landing{padding:60px 0 80px;}
+.hero{text-align:center;padding:60px 0 48px;}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;background:var(--accent-dim);border:1px solid rgba(0,245,170,0.2);border-radius:100px;padding:7px 18px;font-size:10px;color:var(--accent);letter-spacing:0.18em;text-transform:uppercase;margin-bottom:28px;}
+.hero-badge-dot{width:6px;height:6px;background:var(--accent);border-radius:50%;animation:blink 2s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+h1{font-family:'Syne',sans-serif;font-size:clamp(2.4rem,6vw,4.2rem);font-weight:800;letter-spacing:-0.04em;line-height:1.05;margin-bottom:18px;}
+h1 .g{background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.hero-sub{color:var(--muted2);font-size:14px;max-width:500px;margin:0 auto 36px;line-height:1.7;}
+.hero-ctas{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;}
+.features{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin-top:56px;}
+.feat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;transition:all 0.3s;}
+.feat-card:hover{border-color:rgba(0,245,170,0.25);transform:translateY(-3px);}
+.feat-icon{font-size:28px;margin-bottom:14px;}
+.feat-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:8px;}
+.feat-desc{font-size:11px;color:var(--muted2);line-height:1.6;}
+
+/* PRICING */
+.section-title{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;text-align:center;letter-spacing:-0.03em;margin-bottom:8px;}
+.section-sub{text-align:center;color:var(--muted2);font-size:12px;margin-bottom:36px;}
+.pricing-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:640px;margin:0 auto;}
+.price-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px 24px;position:relative;transition:all 0.3s;}
+.price-card.pro-card{border-color:rgba(255,200,74,0.35);}
+.price-card.pro-card::before{content:'MOST POPULAR';position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--gold);color:#1a0a00;font-size:9px;font-weight:700;letter-spacing:0.15em;padding:4px 14px;border-radius:100px;}
+.price-name{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;margin-bottom:4px;}
+.price-amount{font-family:'Syne',sans-serif;font-size:36px;font-weight:800;margin:12px 0 4px;}
+.price-period{font-size:11px;color:var(--muted2);margin-bottom:20px;}
+.price-features{list-style:none;margin-bottom:24px;}
+.price-features li{font-size:11px;color:var(--muted2);padding:6px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;}
+.price-features li:last-child{border-bottom:none;}
+.check{color:var(--accent);}
+.cross{color:var(--muted);}
+
+/* AUTH MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);z-index:500;align-items:center;justify-content:center;padding:20px;}
+.modal-overlay.show{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:20px;padding:36px;width:100%;max-width:420px;position:relative;animation:fadeUp 0.3s ease;}
+.modal-close{position:absolute;top:16px;right:16px;background:none;border:none;color:var(--muted2);font-size:18px;cursor:pointer;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:6px;transition:all 0.2s;}
+.modal-close:hover{background:var(--surface2);color:var(--text);}
+.modal-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;margin-bottom:6px;}
+.modal-sub{font-size:11px;color:var(--muted2);margin-bottom:28px;}
+.form-group{margin-bottom:16px;}
+.form-label{font-size:11px;color:var(--muted2);margin-bottom:6px;display:block;letter-spacing:0.05em;text-transform:uppercase;}
+.form-input{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:12px 14px;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text);transition:all 0.2s;outline:none;}
+.form-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,245,170,0.08);}
+.form-input::placeholder{color:var(--muted);}
+.auth-switch{text-align:center;margin-top:16px;font-size:11px;color:var(--muted2);}
+.auth-switch a{color:var(--accent);cursor:pointer;}
+.form-error{font-size:11px;color:var(--danger);margin-top:8px;display:none;padding:8px 12px;background:rgba(255,94,122,0.08);border-radius:6px;border:1px solid rgba(255,94,122,0.2);}
+.form-error.show{display:block;}
+
+/* DASHBOARD */
+#screen-dashboard{padding:32px 0 60px;}
+.dash-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;flex-wrap:wrap;gap:12px;}
+.dash-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;}
+.dash-subtitle{font-size:11px;color:var(--muted2);margin-top:2px;}
+.usage-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px 24px;margin-bottom:20px;display:flex;align-items:center;gap:24px;flex-wrap:wrap;}
+.usage-info{flex:1;min-width:200px;}
+.usage-title{font-size:10px;color:var(--muted2);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;}
+.usage-bar-wrap{height:5px;background:var(--surface2);border-radius:100px;overflow:hidden;margin-bottom:6px;}
+.usage-bar-fill{height:100%;border-radius:100px;transition:width 1s ease;}
+.usage-bar-fill.low{background:var(--accent);}
+.usage-bar-fill.mid{background:var(--warning);}
+.usage-bar-fill.high{background:var(--danger);}
+.usage-text{font-size:11px;color:var(--muted2);}
+.usage-count{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;min-width:80px;text-align:right;}
+
+/* UPLOAD */
+.upload-card{background:var(--surface);border:2px dashed var(--border2);border-radius:20px;padding:48px 32px;text-align:center;cursor:pointer;transition:all 0.3s;position:relative;overflow:hidden;margin-bottom:20px;}
+.upload-card::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at center,rgba(0,245,170,0.06) 0%,transparent 70%);opacity:0;transition:opacity 0.3s;}
+.upload-card:hover,.upload-card.drag{border-color:var(--accent);transform:translateY(-2px);}
+.upload-card:hover::before,.upload-card.drag::before{opacity:1;}
+.upload-icon-wrap{width:72px;height:72px;background:var(--surface2);border:1px solid var(--border2);border-radius:18px;margin:0 auto 18px;display:flex;align-items:center;justify-content:center;font-size:30px;transition:all 0.3s;}
+.upload-card:hover .upload-icon-wrap{background:var(--accent-dim);border-color:rgba(0,245,170,0.3);}
+.upload-h{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;margin-bottom:6px;}
+.upload-p{font-size:11px;color:var(--muted2);margin-bottom:18px;}
+#file-input{display:none;}
+
+/* CONFIG */
+.config-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-bottom:20px;display:none;}
+.config-card.show{display:block;animation:fadeUp 0.3s ease;}
+.config-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px;}
+.config-head-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;}
+.file-pill{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border2);border-radius:100px;padding:6px 14px;}
+.file-pill-name{font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.file-pill-size{font-size:10px;color:var(--muted2);}
+.steps-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;margin-bottom:20px;}
+.step-toggle{display:flex;align-items:center;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 14px;cursor:pointer;transition:all 0.2s;user-select:none;}
+.step-toggle:hover{border-color:rgba(0,245,170,0.25);}
+.step-toggle.on{border-color:rgba(0,245,170,0.35);background:rgba(0,245,170,0.05);}
+.toggle-box{width:17px;height:17px;border:1.5px solid var(--border2);border-radius:5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;transition:all 0.2s;}
+.step-toggle.on .toggle-box{background:var(--accent);border-color:var(--accent);color:#050510;font-weight:700;}
+.step-lbl{font-size:11px;color:var(--muted2);}
+.step-toggle.on .step-lbl{color:var(--text);}
+.pro-lock{font-size:9px;color:var(--gold);margin-left:auto;background:rgba(255,200,74,0.1);border-radius:4px;padding:2px 6px;}
+
+/* PROGRESS */
+.progress-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-bottom:20px;display:none;}
+.progress-card.show{display:block;animation:fadeUp 0.3s ease;}
+.prog-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+.prog-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;}
+.prog-pct{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:var(--accent);}
+.prog-bar-wrap{height:5px;background:var(--surface2);border-radius:100px;margin-bottom:20px;overflow:hidden;}
+.prog-bar{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:100px;transition:width 0.6s cubic-bezier(0.4,0,0.2,1);width:0%;}
+.step-rows{display:flex;flex-direction:column;gap:6px;}
+.step-row{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--surface2);border:1px solid transparent;border-radius:10px;transition:all 0.3s;}
+.step-row.running{border-color:rgba(0,245,170,0.25);background:rgba(0,245,170,0.04);}
+.step-row.done{opacity:0.7;}
+.step-row-icon{font-size:15px;width:22px;text-align:center;flex-shrink:0;}
+.step-row-text{flex:1;font-size:11px;}
+.step-row-status{font-size:10px;color:var(--muted2);}
+.step-row.done .step-row-status{color:var(--accent);}
+.step-row.running .step-row-status{color:var(--warning);}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin{display:inline-block;animation:spin 0.7s linear infinite;}
+
+/* RESULTS */
+.results-card{display:none;margin-bottom:20px;}
+.results-card.show{display:block;animation:fadeUp 0.4s ease;}
+.stats-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;margin-bottom:16px;}
+.stat-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;text-align:center;transition:all 0.3s;}
+.stat-box:hover{border-color:rgba(0,245,170,0.25);transform:translateY(-2px);}
+.stat-num{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:var(--accent);line-height:1;}
+.stat-lbl{font-size:9px;color:var(--muted2);text-transform:uppercase;letter-spacing:0.1em;margin-top:4px;}
+.report-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px 24px;margin-bottom:12px;}
+.report-box-title{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:14px;}
+.r-item{display:flex;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:11px;}
+.r-item:last-child{border:none;}
+.r-key{color:var(--muted2);min-width:150px;flex-shrink:0;}
+.r-val{color:var(--text);}
+.r-val.ok{color:var(--accent);}
+.r-val.warn{color:var(--warning);}
+.table-scroll{overflow-x:auto;border-radius:10px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:10px;}
+th{background:var(--surface2);color:var(--accent);padding:9px 12px;text-align:left;font-weight:500;letter-spacing:0.05em;text-transform:uppercase;white-space:nowrap;border-bottom:1px solid var(--border);}
+td{padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.04);white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis;}
+tr:hover td{background:rgba(0,245,170,0.02);}
+.dl-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px;}
+.dl-card{display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;cursor:pointer;transition:all 0.3s;text-decoration:none;color:var(--text);}
+.dl-card:hover{border-color:var(--accent);transform:translateY(-2px);}
+.dl-card-icon{font-size:26px;}
+.dl-card-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;}
+.dl-card-sub{font-size:10px;color:var(--muted2);}
+.reset-btn{display:block;width:100%;margin-top:12px;padding:11px;background:transparent;border:1px solid var(--border);border-radius:10px;color:var(--muted2);font-family:'JetBrains Mono',monospace;font-size:11px;cursor:pointer;transition:all 0.2s;}
+.reset-btn:hover{border-color:var(--accent);color:var(--accent);}
+
+/* HISTORY */
+#screen-history{padding:32px 0 60px;}
+.history-grid{display:flex;flex-direction:column;gap:10px;margin-top:20px;}
+.history-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;display:flex;align-items:center;gap:16px;transition:all 0.3s;}
+.history-item:hover{border-color:var(--border2);}
+.hi-icon{font-size:24px;flex-shrink:0;}
+.hi-info{flex:1;min-width:0;}
+.hi-name{font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.hi-meta{font-size:10px;color:var(--muted2);margin-top:3px;}
+.hi-badge{font-size:9px;padding:3px 10px;border-radius:100px;font-weight:600;background:rgba(0,245,170,0.1);color:var(--accent);border:1px solid rgba(0,245,170,0.2);}
+.hi-actions{display:flex;gap:8px;flex-shrink:0;}
+.hi-dl{background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:6px 12px;font-size:10px;cursor:pointer;transition:all 0.2s;color:var(--text);}
+.hi-dl:hover{border-color:var(--accent);color:var(--accent);}
+.empty-state{text-align:center;padding:60px 20px;}
+.empty-icon{font-size:48px;margin-bottom:16px;}
+.empty-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;margin-bottom:8px;}
+.empty-sub{font-size:12px;color:var(--muted2);}
+
+/* CLOUDINARY MODAL */
+.setup-steps{display:flex;flex-direction:column;gap:12px;margin:16px 0;}
+.setup-step{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;}
+.setup-step-num{font-size:10px;color:var(--accent);font-weight:700;letter-spacing:0.1em;margin-bottom:4px;}
+.setup-step-title{font-size:12px;font-weight:600;margin-bottom:4px;}
+.setup-step-desc{font-size:11px;color:var(--muted2);line-height:1.5;}
+.setup-step a{color:var(--accent);}
+
+/* PAYMENT MODAL */
+.order-summary{background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:16px;margin-bottom:20px;}
+
+/* API STATUS bar */
+.api-status{display:flex;align-items:center;gap:8px;font-size:10px;padding:6px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:100px;margin-bottom:20px;}
+.api-dot{width:7px;height:7px;border-radius:50%;background:var(--warning);}
+.api-dot.online{background:var(--accent);}
+.api-dot.offline{background:var(--danger);}
+.api-dot.checking{background:var(--warning);animation:blink 1s infinite;}
+
+/* TOAST */
+.toast-wrap{position:fixed;bottom:24px;right:24px;z-index:1000;display:flex;flex-direction:column;gap:8px;}
+.toast{background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:12px 18px;font-size:11px;display:flex;align-items:center;gap:10px;animation:toastIn 0.3s ease;max-width:320px;}
+.toast.success{border-color:rgba(0,245,170,0.3);color:var(--accent);}
+.toast.error{border-color:rgba(255,94,122,0.3);color:var(--danger);}
+.toast.info{border-color:rgba(108,99,255,0.3);color:#a09fff;}
+@keyframes toastIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+
+.cloud-status{font-size:10px;color:var(--muted2);display:flex;align-items:center;gap:6px;margin-top:8px;}
+.cloud-dot{width:6px;height:6px;border-radius:50%;background:var(--muted);}
+.cloud-dot.uploading{background:var(--warning);animation:blink 1s infinite;}
+.cloud-dot.done{background:var(--accent);}
+
+#screen-pricing{padding:60px 0;}
+@media(max-width:600px){.pricing-grid{grid-template-columns:1fr;}.dl-row{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<div class="orb orb1"></div><div class="orb orb2"></div>
+
+<!-- ── NAV ── -->
+<nav>
+  <div class="container">
+    <div class="nav-inner">
+      <div class="nav-logo" onclick="goHome()">Data<span>Clean</span> AI</div>
+      <div class="nav-actions">
+        <div id="nav-guest">
+          <button class="btn btn-ghost" onclick="showAuth('login')">Login</button>
+          <button class="btn btn-accent" onclick="showAuth('signup')" style="margin-left:8px;">Free Shuru Karo</button>
+        </div>
+        <div class="nav-user" id="nav-user">
+          <div class="user-avatar" id="nav-avatar">U</div>
+          <div>
+            <div class="user-name" id="nav-uname">user</div>
+            <span class="plan-badge free" id="nav-plan">FREE</span>
+          </div>
+          <button class="btn btn-ghost" onclick="showScreen('history')" style="margin-left:4px;">📁</button>
+          <button class="btn btn-ghost" onclick="logout()">Logout</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<div class="page container">
+
+  <!-- LANDING -->
+  <div id="screen-landing" class="screen active">
+    <div class="hero">
+      <div class="hero-badge"><div class="hero-badge-dot"></div> AI-POWERED</div>
+      <h1>Dirty Data Ko<br/><span class="g">Clean Karo</span></h1>
+      <p class="hero-sub">CSV upload karo, 9 cleaning steps auto-apply honge. Clean CSV + PDF report milega.</p>
+      <div class="hero-ctas">
+        <button class="btn btn-accent" style="padding:12px 28px;font-size:14px;" onclick="showAuth('signup')">🚀 Free Shuru Karo</button>
+        <button class="btn btn-ghost" style="padding:12px 28px;font-size:14px;" onclick="showScreen('pricing')">💎 Plans</button>
+      </div>
+    </div>
+    <div class="features">
+      <div class="feat-card"><div class="feat-icon">🧹</div><div class="feat-title">9 Cleaning Steps</div><div class="feat-desc">Encoding, duplicates, missing values, outliers, dates — sab auto</div></div>
+      <div class="feat-card"><div class="feat-icon">☁️</div><div class="feat-title">Cloud Storage</div><div class="feat-desc">Cloudinary pe secure files save — kabhi bhi access karo</div></div>
+      <div class="feat-card"><div class="feat-icon">📄</div><div class="feat-title">PDF Report</div><div class="feat-desc">Professional cleaning summary PDF mein download karo</div></div>
+      <div class="feat-card"><div class="feat-icon">📁</div><div class="feat-title">File History</div><div class="feat-desc">Purani cleaned files history mein milti hain — Pro plan mein</div></div>
+      <div class="feat-card"><div class="feat-icon">🔐</div><div class="feat-title">Secure Auth</div><div class="feat-desc">JWT authentication + bcrypt password — data safe hai</div></div>
+      <div class="feat-card"><div class="feat-icon">⚡</div><div class="feat-title">Fast Processing</div><div class="feat-desc">pandas + numpy se fast cleaning — seconds mein results</div></div>
+    </div>
+    <div style="margin-top:72px;">
+      <div class="section-title">Pricing</div>
+      <div class="section-sub">Shuru karo free mein</div>
+      <div class="pricing-grid">
+        <div class="price-card">
+          <div class="price-name">Free</div>
+          <div class="price-amount">₹0</div>
+          <div class="price-period">hamesha free</div>
+          <ul class="price-features">
+            <li><span class="check">✓</span> 5 files/month</li>
+            <li><span class="check">✓</span> Max 1,000 rows</li>
+            <li><span class="check">✓</span> 8 cleaning steps</li>
+            <li><span class="check">✓</span> CSV download</li>
+            <li><span class="cross">✗</span> Cloud storage</li>
+            <li><span class="cross">✗</span> PDF report</li>
+            <li><span class="cross">✗</span> File history</li>
+          </ul>
+          <button class="btn btn-outline btn-full" onclick="showAuth('signup')">Start Free</button>
+        </div>
+        <div class="price-card pro-card">
+          <div class="price-name" style="color:var(--gold);">Pro ⚡</div>
+          <div class="price-amount" style="color:var(--gold);">₹499</div>
+          <div class="price-period">per month</div>
+          <ul class="price-features">
+            <li><span class="check">✓</span> Unlimited files</li>
+            <li><span class="check">✓</span> Unlimited rows</li>
+            <li><span class="check">✓</span> All 9 steps + outliers</li>
+            <li><span class="check">✓</span> CSV + PDF download</li>
+            <li><span class="check">✓</span> Cloudinary storage</li>
+            <li><span class="check">✓</span> File history</li>
+            <li><span class="check">✓</span> Priority support</li>
+          </ul>
+          <button class="btn btn-gold btn-full" onclick="upgradePlan()">Pro Upgrade</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="screen-dashboard" class="screen">
+    <div class="dash-header">
+      <div>
+        <div class="dash-title">Dashboard</div>
+        <div class="dash-subtitle" id="dash-greeting">Namaste! Aaj kaunsa data clean karein?</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <div class="api-status"><div class="api-dot checking" id="api-dot"></div><span id="api-text">Backend check...</span></div>
+        <button class="btn btn-ghost" id="upgrade-btn" onclick="upgradePlan()" style="display:none;">⚡ Pro Upgrade</button>
+      </div>
+    </div>
+    <div class="usage-card">
+      <div class="usage-info">
+        <div class="usage-title">Monthly Usage</div>
+        <div class="usage-bar-wrap"><div class="usage-bar-fill low" id="usage-bar" style="width:0%"></div></div>
+        <div class="usage-text" id="usage-text">Loading...</div>
+      </div>
+      <div class="usage-count" id="usage-count">—</div>
+    </div>
+    <div class="upload-card" id="upload-card" onclick="document.getElementById('file-input').click()">
+      <div class="upload-icon-wrap">📂</div>
+      <div class="upload-h">CSV File Yahan Drop Karo</div>
+      <p class="upload-p">ya click karke select karo · max 50MB · CSV format</p>
+      <button class="btn btn-accent" onclick="event.stopPropagation();document.getElementById('file-input').click()">File Choose Karo</button>
+      <input type="file" id="file-input" accept=".csv,.txt"/>
+    </div>
+    <div class="config-card" id="config-card">
+      <div class="config-head">
+        <div class="config-head-title">⚙️ Cleaning Steps</div>
+        <div class="file-pill">
+          <span>📄</span>
+          <span class="file-pill-name" id="pill-name">—</span>
+          <span class="file-pill-size" id="pill-size">—</span>
+          <button class="btn btn-danger" style="padding:4px 10px;font-size:10px;margin-left:6px;" onclick="resetUpload()">✕</button>
+        </div>
+      </div>
+      <div class="steps-grid" id="steps-grid"></div>
+      <div class="cloud-status" id="cloud-status" style="display:none;">
+        <div class="cloud-dot" id="cloud-dot"></div><span id="cloud-text">Uploading to cloud...</span>
+      </div>
+      <button class="btn btn-accent btn-full" id="run-btn" onclick="startCleaning()" style="margin-top:16px;">🚀 Cleaning Shuru Karo</button>
+    </div>
+    <div class="progress-card" id="progress-card">
+      <div class="prog-header">
+        <div class="prog-title">AI Processing...</div>
+        <div class="prog-pct" id="prog-pct">0%</div>
+      </div>
+      <div class="prog-bar-wrap"><div class="prog-bar" id="prog-bar"></div></div>
+      <div class="step-rows" id="step-rows"></div>
+    </div>
+    <div class="results-card" id="results-card">
+      <div class="stats-row" id="stats-row"></div>
+      <div class="report-box" id="report-box"></div>
+      <div class="report-box" id="preview-box"></div>
+      <div class="dl-row" id="dl-row"></div>
+      <button class="reset-btn" onclick="resetAll()">↩ Naya File Upload Karo</button>
+    </div>
+  </div>
+
+  <!-- HISTORY -->
+  <div id="screen-history" class="screen">
+    <div class="dash-header">
+      <div><div class="dash-title">📁 File History</div><div class="dash-subtitle">Aapke cleaned files</div></div>
+      <button class="btn btn-ghost" onclick="showScreen('dashboard')">← Dashboard</button>
+    </div>
+    <div class="history-grid" id="history-grid"></div>
+  </div>
+
+  <!-- PRICING -->
+  <div id="screen-pricing" class="screen">
+    <div style="padding:40px 0 60px;">
+      <div class="section-title">Choose Your Plan</div>
+      <div class="section-sub">Kabhi bhi cancel kar sakte hain</div>
+      <div class="pricing-grid" style="margin-top:36px;">
+        <div class="price-card">
+          <div class="price-name">Free</div><div class="price-amount">₹0</div>
+          <div class="price-period">hamesha free</div>
+          <ul class="price-features">
+            <li><span class="check">✓</span> 5 files/month</li>
+            <li><span class="check">✓</span> Max 1,000 rows</li>
+            <li><span class="cross">✗</span> PDF report</li>
+            <li><span class="cross">✗</span> File history</li>
+          </ul>
+          <button class="btn btn-outline btn-full" onclick="showScreen('dashboard')">Current Plan</button>
+        </div>
+        <div class="price-card pro-card">
+          <div class="price-name" style="color:var(--gold);">Pro ⚡</div>
+          <div class="price-amount" style="color:var(--gold);">₹499</div>
+          <div class="price-period">per month</div>
+          <ul class="price-features">
+            <li><span class="check">✓</span> Unlimited files + rows</li>
+            <li><span class="check">✓</span> PDF report</li>
+            <li><span class="check">✓</span> Cloudinary storage</li>
+            <li><span class="check">✓</span> File history</li>
+          </ul>
+          <button class="btn btn-gold btn-full" onclick="upgradePlan()">⚡ ₹499/mo</button>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:20px;">
+        <button class="btn btn-ghost" onclick="showScreen('dashboard')">← Dashboard</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- AUTH MODAL -->
+<div class="modal-overlay" id="auth-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('auth-modal')">✕</button>
+    <div class="modal-title" id="auth-title">Sign Up Free</div>
+    <div class="modal-sub" id="auth-sub">DataClean AI join karo</div>
+    <div class="form-group" id="name-group">
+      <label class="form-label">Full Name</label>
+      <input class="form-input" id="inp-name" type="text" placeholder="Rahul Sharma"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input class="form-input" id="inp-email" type="email" placeholder="rahul@email.com"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input class="form-input" id="inp-pass" type="password" placeholder="minimum 6 characters"/>
+    </div>
+    <div class="form-error" id="auth-error"></div>
+    <button class="btn btn-accent btn-full" id="auth-submit" onclick="submitAuth()">Create Account</button>
+    <div class="auth-switch" id="auth-switch">
+      Already account hai? <a onclick="switchAuth('login')">Login karo</a>
+    </div>
+  </div>
+</div>
+
+<!-- CLOUDINARY MODAL -->
+<div class="modal-overlay" id="setup-modal">
+  <div class="modal" style="max-width:500px;">
+    <button class="modal-close" onclick="closeModal('setup-modal')">✕</button>
+    <div class="modal-title">☁️ Cloudinary Setup</div>
+    <div class="modal-sub">Files cloud mein save hongi — ek baar setup karo</div>
+    <div class="setup-steps">
+      <div class="setup-step"><div class="setup-step-num">01</div><div class="setup-step-title">Free Account</div><div class="setup-step-desc"><a href="https://cloudinary.com/users/register/free" target="_blank">cloudinary.com</a> pe free signup karo (25GB free)</div></div>
+      <div class="setup-step"><div class="setup-step-num">02</div><div class="setup-step-title">Upload Preset</div><div class="setup-step-desc">Settings → Upload → Add upload preset → Mode: <b>Unsigned</b> → Save</div></div>
+      <div class="setup-step"><div class="setup-step-num">03</div><div class="setup-step-title">Credentials</div><div class="setup-step-desc">Dashboard se Cloud Name aur Preset name copy karo</div></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Cloud Name</label>
+      <input class="form-input" id="inp-cloud-name" placeholder="e.g. my-cloud-abc123"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Upload Preset</label>
+      <input class="form-input" id="inp-upload-preset" placeholder="e.g. dataclean_unsigned"/>
+    </div>
+    <button class="btn btn-accent btn-full" onclick="saveCloudinaryConfig()">✓ Save &amp; Enable</button>
+    <button class="btn btn-ghost btn-full" onclick="closeModal('setup-modal')" style="margin-top:8px;">Baad Mein</button>
+  </div>
+</div>
+
+<!-- PAYMENT MODAL -->
+<div class="modal-overlay" id="pay-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('pay-modal')">✕</button>
+    <div class="modal-title">⚡ Pro Upgrade</div>
+    <div class="modal-sub">Razorpay se secure payment</div>
+    <div class="order-summary">
+      <div style="font-size:11px;color:var(--muted2);margin-bottom:8px;">Order Summary</div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;"><span>DataClean AI Pro</span><span style="color:var(--gold);font-weight:700;">₹499/mo</span></div>
+      <div style="font-size:10px;color:var(--muted2);margin-top:4px;">Unlimited files · Cloud storage · PDF reports · File history</div>
+    </div>
+    <button class="btn btn-gold btn-full" id="razorpay-btn" onclick="initiateRazorpay()">🔒 Razorpay se Pay karo</button>
+    <div style="text-align:center;font-size:10px;color:var(--muted2);margin-top:10px;">256-bit SSL · Cancel anytime</div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<script>
+// ══════════════════════════════════════════════
+//  CONFIG — YAHAN APNA RENDER URL DAALO
+// ══════════════════════════════════════════════
+const API_BASE = "https://YOUR-APP-NAME.onrender.com";
+// Local development ke liye:
+// const API_BASE = "http://localhost:8000";
+
+// ══════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════
+let STATE = {
+  token: localStorage.getItem("dc_token") || null,
+  user:  JSON.parse(localStorage.getItem("dc_user") || "null"),
+  uploadedFile: null,
+  parsedData: null,
+  cleanedData: null,
+  cleaningReport: {},
+  activeSteps: new Set(),
+  currentFileId: null,
+};
+
+// ══════════════════════════════════════════════
+//  API HELPER
+// ══════════════════════════════════════════════
+async function api(method, path, body = null, isForm = false) {
+  const headers = {};
+  if (STATE.token) headers["Authorization"] = `Bearer ${STATE.token}`;
+  if (body && !isForm) headers["Content-Type"] = "application/json";
+
+  const opts = { method, headers };
+  if (body) opts.body = isForm ? body : JSON.stringify(body);
+
+  const res = await fetch(API_BASE + path, opts);
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    throw new Error(data.detail || `API error ${res.status}`);
+  }
+  return data;
+}
+
+// ══════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════
+window.addEventListener("DOMContentLoaded", () => {
+  if (STATE.user && STATE.token) {
+    renderNav();
+    showScreen("dashboard");
+    checkBackend();
+  }
+});
+
+async function checkBackend() {
+  const dot  = document.getElementById("api-dot");
+  const text = document.getElementById("api-text");
+  try {
+    await fetch(API_BASE + "/health");
+    dot.className  = "api-dot online";
+    text.textContent = "Backend online ✓";
+  } catch {
+    dot.className  = "api-dot offline";
+    text.textContent = "Backend offline ✗";
+    toast("error", "Backend se connect nahi ho pa raha. Render URL check karo.");
+  }
+}
+
+// ══════════════════════════════════════════════
+//  SCREENS
+// ══════════════════════════════════════════════
+function showScreen(name) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById("screen-" + name).classList.add("active");
+  if (name === "dashboard") renderDashboard();
+  if (name === "history")   loadHistory();
+}
+
+function goHome() {
+  if (STATE.user) showScreen("dashboard");
+  else showScreen("landing");
+}
+
+// ══════════════════════════════════════════════
+//  AUTH
+// ══════════════════════════════════════════════
+let authMode = "signup";
+
+function showAuth(mode) {
+  authMode = mode;
+  document.getElementById("auth-error").classList.remove("show");
+  ["inp-email","inp-pass","inp-name"].forEach(id => document.getElementById(id).value = "");
+  updateAuthUI();
+  showModal("auth-modal");
+}
+
+function updateAuthUI() {
+  const s = authMode === "signup";
+  document.getElementById("auth-title").textContent    = s ? "Sign Up Free" : "Welcome Back";
+  document.getElementById("auth-sub").textContent      = s ? "DataClean AI join karo" : "Login karke continue karo";
+  document.getElementById("auth-submit").textContent   = s ? "Create Account" : "Login";
+  document.getElementById("name-group").style.display  = s ? "block" : "none";
+  document.getElementById("auth-switch").innerHTML     = s
+    ? 'Already account hai? <a onclick="switchAuth(\'login\')">Login karo</a>'
+    : 'Account nahi hai? <a onclick="switchAuth(\'signup\')">Sign up karo</a>';
+}
+
+function switchAuth(mode) { authMode = mode; updateAuthUI(); }
+
+async function submitAuth() {
+  const email = document.getElementById("inp-email").value.trim();
+  const pass  = document.getElementById("inp-pass").value.trim();
+  const name  = document.getElementById("inp-name").value.trim();
+  const errEl = document.getElementById("auth-error");
+  const btn   = document.getElementById("auth-submit");
+  errEl.classList.remove("show");
+
+  if (!email || !pass) { errEl.textContent = "Email aur password required hai"; errEl.classList.add("show"); return; }
+
+  btn.disabled = true;
+  btn.textContent = "Please wait...";
+
+  try {
+    let data;
+    if (authMode === "signup") {
+      if (!name) { errEl.textContent = "Name required hai"; errEl.classList.add("show"); btn.disabled=false; btn.textContent="Create Account"; return; }
+      data = await api("POST", "/api/auth/signup", { email, password: pass, name });
+    } else {
+      // OAuth2 form format
+      const form = new URLSearchParams();
+      form.append("username", email);
+      form.append("password", pass);
+      const res = await fetch(API_BASE + "/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: form
+      });
+      data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Login failed");
+    }
+
+    STATE.token = data.access_token;
+    STATE.user  = data.user;
+    localStorage.setItem("dc_token", STATE.token);
+    localStorage.setItem("dc_user",  JSON.stringify(STATE.user));
+
+    closeModal("auth-modal");
+    renderNav();
+    showScreen("dashboard");
+    toast("success", authMode === "signup" ? `Welcome, ${STATE.user.name}! 🎉` : "Login successful!");
+
+    if (authMode === "signup" && !STATE.user.has_cloudinary)
+      setTimeout(() => showModal("setup-modal"), 1200);
+
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.classList.add("show");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = authMode === "signup" ? "Create Account" : "Login";
+  }
+}
+
+function logout() {
+  STATE.token = null; STATE.user = null;
+  localStorage.removeItem("dc_token");
+  localStorage.removeItem("dc_user");
+  renderNav();
+  showScreen("landing");
+  toast("info", "Logout ho gaye");
+}
+
+// ══════════════════════════════════════════════
+//  NAV
+// ══════════════════════════════════════════════
+function renderNav() {
+  if (!STATE.user) {
+    document.getElementById("nav-guest").style.display = "flex";
+    document.getElementById("nav-user").classList.remove("show");
+    return;
+  }
+  document.getElementById("nav-guest").style.display = "none";
+  document.getElementById("nav-user").classList.add("show");
+  document.getElementById("nav-avatar").textContent = (STATE.user.name || "U")[0].toUpperCase();
+  document.getElementById("nav-uname").textContent  = STATE.user.name;
+  const pb = document.getElementById("nav-plan");
+  pb.textContent  = STATE.user.plan === "pro" ? "PRO ⚡" : "FREE";
+  pb.className    = "plan-badge " + (STATE.user.plan === "pro" ? "pro" : "free");
+}
+
+// ══════════════════════════════════════════════
+//  DASHBOARD
+// ══════════════════════════════════════════════
+async function renderDashboard() {
+  if (!STATE.user) return;
+  checkBackend();
+
+  // Refresh user from API
+  try {
+    const me = await api("GET", "/api/auth/me");
+    STATE.user = me;
+    localStorage.setItem("dc_user", JSON.stringify(me));
+    renderNav();
+  } catch(e) {}
+
+  const limit = STATE.user.plan === "pro" ? Infinity : 5;
+  const used  = STATE.user.files_used_month || 0;
+  const pct   = limit === Infinity ? 5 : Math.min((used/limit)*100, 100);
+
+  document.getElementById("usage-bar").style.width = pct + "%";
+  document.getElementById("usage-bar").className   = "usage-bar-fill " + (pct>80?"high":pct>50?"mid":"low");
+  document.getElementById("usage-text").textContent = limit === Infinity
+    ? `${used} files used (unlimited)`
+    : `${used} / ${limit} files used this month`;
+  document.getElementById("usage-count").textContent = limit===Infinity ? `${used}` : `${used}/${limit}`;
+  document.getElementById("upgrade-btn").style.display = STATE.user.plan==="pro" ? "none" : "block";
+  document.getElementById("dash-greeting").textContent = `Namaste, ${STATE.user.name}! 👋`;
+  buildStepsGrid();
+  setupUpload();
+}
+
+// ══════════════════════════════════════════════
+//  STEP DEFINITIONS
+// ══════════════════════════════════════════════
+const STEPS = [
+  {id:"encoding",   label:"Encoding Fix",       icon:"🔡", pro:false},
+  {id:"columns",    label:"Column Names",        icon:"🏷", pro:false},
+  {id:"whitespace", label:"Whitespace Clean",    icon:"✂️", pro:false},
+  {id:"dtypes",     label:"Data Type Fix",       icon:"🔢", pro:false},
+  {id:"dates",      label:"Date Format Fix",     icon:"📅", pro:false},
+  {id:"categories", label:"Categories Fix",      icon:"🗂", pro:false},
+  {id:"missing",    label:"Missing Values",      icon:"❓", pro:false},
+  {id:"duplicates", label:"Duplicates Remove",   icon:"🗑", pro:false},
+  {id:"outliers",   label:"Outlier Detection",   icon:"📊", pro:true },
+];
+
+function buildStepsGrid() {
+  const isPro = STATE.user?.plan === "pro";
+  STATE.activeSteps = new Set(STEPS.filter(s => !s.pro || isPro).map(s => s.id));
+  document.getElementById("steps-grid").innerHTML = STEPS.map(s => {
+    const locked = s.pro && !isPro;
+    const on     = STATE.activeSteps.has(s.id);
+    return `<div class="step-toggle ${on?"on":""}" id="tog-${s.id}"
+      onclick="${locked ? "upgradePlan()" : `toggleStep('${s.id}')`}">
+      <div class="toggle-box">${on?"✓":""}</div>
+      <div class="step-lbl">${s.icon} ${s.label}</div>
+      ${locked ? '<span class="pro-lock">PRO</span>' : ""}
+    </div>`;
+  }).join("");
+}
+
+function toggleStep(id) {
+  STATE.activeSteps.has(id) ? STATE.activeSteps.delete(id) : STATE.activeSteps.add(id);
+  const el = document.getElementById("tog-"+id);
+  el.classList.toggle("on", STATE.activeSteps.has(id));
+  el.querySelector(".toggle-box").textContent = STATE.activeSteps.has(id) ? "✓" : "";
+}
+
+// ══════════════════════════════════════════════
+//  UPLOAD
+// ══════════════════════════════════════════════
+function setupUpload() {
+  const zone = document.getElementById("upload-card");
+  const inp  = document.getElementById("file-input");
+  zone.ondragover = e => { e.preventDefault(); zone.classList.add("drag"); };
+  zone.ondragleave= () => zone.classList.remove("drag");
+  zone.ondrop     = e => { e.preventDefault(); zone.classList.remove("drag"); handleFile(e.dataTransfer.files[0]); };
+  inp.onchange    = e => handleFile(e.target.files[0]);
+}
+
+async function handleFile(file) {
+  if (!file) return;
+  if (!file.name.match(/\.(csv|txt)$/i)) { toast("error","Sirf CSV files allowed hain!"); return; }
+
+  Papa.parse(file, {
+    header: true, skipEmptyLines: true,
+    complete: async result => {
+      STATE.uploadedFile = file;
+      STATE.parsedData   = result;
+      document.getElementById("pill-name").textContent = file.name;
+      document.getElementById("pill-size").textContent = `${(file.size/1024).toFixed(1)}KB · ${result.data.length} rows`;
+      document.getElementById("upload-card").style.display = "none";
+      document.getElementById("config-card").classList.add("show");
+      toast("success", `${file.name} ready! ${result.data.length} rows.`);
+
+      // Upload to backend
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await fetch(API_BASE + "/api/files/upload", {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${STATE.token}` },
+          body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Upload failed");
+        STATE.currentFileId = data.file_id;
+        if (data.cloudinary_url) {
+          document.getElementById("cloud-status").style.display = "flex";
+          document.getElementById("cloud-dot").className = "cloud-dot done";
+          document.getElementById("cloud-text").textContent = "☁️ Cloud mein save ho gaya!";
+        }
+        toast("success","File backend pe upload ho gayi!");
+      } catch (err) {
+        toast("error", err.message);
+        if (err.message.includes("limit")) { showModal("pay-modal"); }
+      }
+    }
+  });
+}
+
+function resetUpload() {
+  STATE.uploadedFile = null; STATE.parsedData = null; STATE.currentFileId = null;
+  document.getElementById("upload-card").style.display = "block";
+  document.getElementById("config-card").classList.remove("show");
+  document.getElementById("cloud-status").style.display = "none";
+  document.getElementById("file-input").value = "";
+}
+
+function resetAll() {
+  resetUpload();
+  document.getElementById("progress-card").classList.remove("show");
+  document.getElementById("results-card").classList.remove("show");
+  STATE.cleanedData = null; STATE.cleaningReport = {};
+}
+
+// ══════════════════════════════════════════════
+//  CLEANING PIPELINE
+// ══════════════════════════════════════════════
+async function startCleaning() {
+  if (!STATE.parsedData || !STATE.currentFileId) { toast("error","File pehle upload karo"); return; }
+
+  document.getElementById("config-card").classList.remove("show");
+  document.getElementById("progress-card").classList.add("show");
+
+  const selected = STEPS.filter(s => STATE.activeSteps.has(s.id));
+  document.getElementById("step-rows").innerHTML = selected.map(s =>
+    `<div class="step-row" id="sr-${s.id}">
+      <div class="step-row-icon">${s.icon}</div>
+      <div class="step-row-text">${s.label}</div>
+      <div class="step-row-status" id="ss-${s.id}">Waiting...</div>
+    </div>`).join("");
+
+  // Animate steps while API runs
+  let i = 0;
+  const animate = setInterval(() => {
+    if (i > 0) setRowDone(selected[i-1].id, "Done ✓");
+    if (i < selected.length) {
+      setRowRunning(selected[i].id);
+      setProgress(Math.round((i/selected.length)*85));
+      i++;
+    }
+  }, 500);
+
+  try {
+    const csvText = Papa.unparse(STATE.parsedData);
+    const result  = await api("POST", "/api/clean/run", {
+      file_id:     STATE.currentFileId,
+      csv_content: csvText,
+      steps:       [...STATE.activeSteps]
+    });
+
+    clearInterval(animate);
+    selected.forEach(s => setRowDone(s.id, "Done ✓"));
+    setProgress(100);
+
+    STATE.cleanedData    = result.clean_csv;
+    STATE.cleaningReport = result.report;
+    await delay(400);
+    document.getElementById("progress-card").classList.remove("show");
+    showResults(result);
+    renderDashboard();
+
+  } catch (err) {
+    clearInterval(animate);
+    toast("error", "Cleaning failed: " + err.message);
+    document.getElementById("progress-card").classList.remove("show");
+    document.getElementById("config-card").classList.add("show");
+  }
+}
+
+function delay(ms){ return new Promise(r=>setTimeout(r,ms)); }
+function setProgress(p){ document.getElementById("prog-bar").style.width=p+"%"; document.getElementById("prog-pct").textContent=p+"%"; }
+function setRowRunning(id){ const el=document.getElementById("sr-"+id);if(!el)return;el.classList.add("running");document.getElementById("ss-"+id).innerHTML='<span class="spin">⟳</span> Running...'; }
+function setRowDone(id,s){ const el=document.getElementById("sr-"+id);if(!el)return;el.classList.remove("running");el.classList.add("done");document.getElementById("ss-"+id).textContent=s; }
+
+// ══════════════════════════════════════════════
+//  RESULTS
+// ══════════════════════════════════════════════
+function showResults(result) {
+  document.getElementById("results-card").classList.add("show");
+  const rep = result.report || {};
+
+  // Parse clean CSV for preview
+  const parsed = Papa.parse(result.clean_csv, {header:true, skipEmptyLines:true});
+  const fields = parsed.meta.fields || [];
+  const data   = parsed.data || [];
+
+  // Stats
+  const dups = rep.duplicates?.removed || 0;
+  const out  = Object.values(rep.outliers?.fixed_cols||{}).reduce((a,v)=>a+(v.count||0),0);
+  const miss = Object.keys(rep.missing?.columns||{}).length;
+  const ren  = rep.columns?.total_changed || 0;
+
+  document.getElementById("stats-row").innerHTML = [
+    [result.clean_rows,"Clean Rows"],[result.clean_cols,"Columns"],
+    [dups,"Dups Removed"],[out,"Outliers Fixed"],
+    [miss,"Missing Fixed"],[ren,"Cols Renamed"]
+  ].map(([n,l])=>`<div class="stat-box"><div class="stat-num">${n}</div><div class="stat-lbl">${l}</div></div>`).join("");
+
+  // Report
+  let rHtml = '<div class="report-box-title">📋 Cleaning Report</div>';
+  STEPS.filter(s=>STATE.activeSteps.has(s.id)).forEach(step=>{
+    const r = rep[step.id];
+    if (!r) return;
+    const has = typeof r==="object" && Object.keys(r).some(k=>r[k]&&r[k]!==0&&JSON.stringify(r[k])!=="{}");
+    rHtml += `<div class="r-item"><div class="r-key">${step.icon} ${step.label}</div>`;
+    if (!has) rHtml += `<div class="r-val ok">✅ No issues</div>`;
+    else {
+      const summary = Object.entries(r).map(([k,v])=>typeof v==="object"?`${k}: ${JSON.stringify(v)}`:`${k}: ${v}`).join(" | ");
+      rHtml += `<div class="r-val warn">${summary}</div>`;
+    }
+    rHtml += `</div>`;
+  });
+  document.getElementById("report-box").innerHTML = rHtml;
+
+  // Preview
+  const pf=fields.slice(0,6); const pr=data.slice(0,5);
+  let tHtml='<div class="report-box-title">👁 Data Preview</div><div class="table-scroll"><table><thead><tr>';
+  pf.forEach(f=>tHtml+=`<th>${f}</th>`);
+  tHtml+='</tr></thead><tbody>';
+  pr.forEach(row=>{tHtml+='<tr>';pf.forEach(f=>tHtml+=`<td>${row[f]??""}</td>`);tHtml+='</tr>';});
+  tHtml+='</tbody></table></div>';
+  document.getElementById("preview-box").innerHTML = tHtml;
+
+  // Downloads
+  const csvUrl = URL.createObjectURL(new Blob([result.clean_csv],{type:"text/csv"}));
+  const isPro  = STATE.user?.plan==="pro";
+  document.getElementById("dl-row").innerHTML = `
+    <a class="dl-card" href="${csvUrl}" download="cleaned_data.csv">
+      <div class="dl-card-icon">📊</div>
+      <div><div class="dl-card-title">Clean CSV Download</div><div class="dl-card-sub">${result.clean_rows} rows · ${result.clean_cols} cols</div></div>
+    </a>
+    <div class="dl-card" onclick="${isPro ? `downloadPDF('${STATE.currentFileId}')` : "upgradePlan()"}">
+      <div class="dl-card-icon">${isPro?"📄":"🔒"}</div>
+      <div><div class="dl-card-title">PDF Report ${isPro?"":"(Pro)"}</div><div class="dl-card-sub">${isPro?"Full cleaning summary":"Pro mein available"}</div></div>
+    </div>`;
+}
+
+async function downloadPDF(fileId) {
+  try {
+    const res = await fetch(`${API_BASE}/api/clean/${fileId}/report/pdf`, {
+      headers: { "Authorization": `Bearer ${STATE.token}` }
+    });
+    if (!res.ok) throw new Error("PDF generation failed");
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href = url; a.download = "cleaning_report.pdf"; a.click();
+    toast("success","PDF download ho rahi hai!");
+  } catch(e) { toast("error", e.message); }
+}
+
+// ══════════════════════════════════════════════
+//  FILE HISTORY
+// ══════════════════════════════════════════════
+async function loadHistory() {
+  if (STATE.user?.plan !== "pro") {
+    document.getElementById("history-grid").innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">🔒</div>
+        <div class="empty-title">Pro Feature</div>
+        <div class="empty-sub" style="margin-bottom:20px;">File history Pro plan mein hai</div>
+        <button class="btn btn-gold" onclick="upgradePlan()">⚡ Pro Upgrade</button>
+      </div>`;
+    return;
+  }
+  try {
+    const files = await api("GET", "/api/files/");
+    if (!files.length) {
+      document.getElementById("history-grid").innerHTML = `
+        <div class="empty-state"><div class="empty-icon">📂</div>
+        <div class="empty-title">Koi File Nahi</div>
+        <div class="empty-sub">Pehle koi file clean karo</div></div>`;
+      return;
+    }
+    document.getElementById("history-grid").innerHTML = files.map(f=>`
+      <div class="history-item">
+        <div class="hi-icon">📄</div>
+        <div class="hi-info">
+          <div class="hi-name">${f.name}</div>
+          <div class="hi-meta">${f.clean_rows} rows · ${f.clean_cols} cols · ${new Date(f.created_at).toLocaleDateString("hi-IN")}</div>
+          ${f.cloudinary_url?`<div class="hi-meta">☁️ <a href="${f.cloudinary_url}" target="_blank" style="color:var(--accent)">Cloud View</a></div>`:""}
+          ${f.clean_csv_url?`<div class="hi-meta">✅ <a href="${f.clean_csv_url}" target="_blank" style="color:var(--accent)">Clean CSV Cloud</a></div>`:""}
+        </div>
+        <span class="hi-badge">✓ Cleaned</span>
+        <div class="hi-actions">
+          <button class="hi-dl" onclick="downloadPDF('${f.id}')">📄 PDF</button>
+          <button class="hi-dl" onclick="deleteFile('${f.id}')">🗑</button>
+        </div>
+      </div>`).join("");
+  } catch(e) { toast("error", e.message); }
+}
+
+async function deleteFile(id) {
+  if (!confirm("File delete karna chahte ho?")) return;
+  try {
+    await api("DELETE", `/api/files/${id}`);
+    toast("success","File delete ho gayi");
+    loadHistory();
+  } catch(e) { toast("error", e.message); }
+}
+
+// ══════════════════════════════════════════════
+//  CLOUDINARY
+// ══════════════════════════════════════════════
+async function saveCloudinaryConfig() {
+  const cn = document.getElementById("inp-cloud-name").value.trim();
+  const pr = document.getElementById("inp-upload-preset").value.trim();
+  if (!cn || !pr) { toast("error","Dono fields required hain"); return; }
+  try {
+    await api("POST", "/api/auth/cloudinary-config", {cloud_name:cn, upload_preset:pr});
+    STATE.user.has_cloudinary = true;
+    localStorage.setItem("dc_user", JSON.stringify(STATE.user));
+    closeModal("setup-modal");
+    toast("success","☁️ Cloudinary connected!");
+  } catch(e) { toast("error", e.message); }
+}
+
+// ══════════════════════════════════════════════
+//  PAYMENT — RAZORPAY
+// ══════════════════════════════════════════════
+function upgradePlan() {
+  if (!STATE.user) { showAuth("signup"); return; }
+  showModal("pay-modal");
+}
+
+async function initiateRazorpay() {
+  const btn = document.getElementById("razorpay-btn");
+  btn.disabled = true; btn.textContent = "Creating order...";
+  try {
+    const order = await api("POST", "/api/plans/create-order");
+
+    // Load Razorpay script
+    await loadScript("https://checkout.razorpay.com/v1/checkout.js");
+
+    const rzp = new Razorpay({
+      key:         order.razorpay_key,
+      amount:      order.amount,
+      currency:    order.currency,
+      order_id:    order.order_id,
+      name:        "DataClean AI",
+      description: "Pro Plan — ₹499/month",
+      prefill:     order.prefill,
+      theme:       { color: "#00f5aa" },
+      handler: async function(response) {
+        try {
+          const verify = await api("POST", "/api/plans/verify-payment", {
+            razorpay_order_id:   response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature:  response.razorpay_signature,
+          });
+          STATE.user.plan = "pro";
+          localStorage.setItem("dc_user", JSON.stringify(STATE.user));
+          closeModal("pay-modal");
+          renderNav();
+          renderDashboard();
+          toast("success","🎉 Pro plan activate ho gaya!");
+        } catch(e) { toast("error","Payment verify failed: "+e.message); }
+      }
+    });
+    rzp.open();
+    closeModal("pay-modal");
+  } catch(e) {
+    toast("error", e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = "🔒 Razorpay se Pay karo";
+  }
+}
+
+function loadScript(src) {
+  return new Promise((res,rej)=>{
+    if (document.querySelector(`script[src="${src}"]`)) { res(); return; }
+    const s=document.createElement("script");
+    s.src=src; s.onload=res; s.onerror=rej;
+    document.head.appendChild(s);
+  });
+}
+
+// ══════════════════════════════════════════════
+//  MODALS + TOAST
+// ══════════════════════════════════════════════
+function showModal(id){ document.getElementById(id).classList.add("show"); }
+function closeModal(id){ document.getElementById(id).classList.remove("show"); }
+document.querySelectorAll(".modal-overlay").forEach(el=>{
+  el.addEventListener("click",e=>{ if(e.target===el) el.classList.remove("show"); });
+});
+
+function toast(type, msg) {
+  const wrap=document.getElementById("toast-wrap");
+  const el=document.createElement("div");
+  el.className=`toast ${type}`;
+  el.innerHTML=`<span>${type==="success"?"✓":type==="error"?"✕":"ℹ"}</span> ${msg}`;
+  wrap.appendChild(el);
+  setTimeout(()=>{ el.style.opacity="0"; el.style.transform="translateX(20px)"; el.style.transition="all 0.3s"; setTimeout(()=>el.remove(),300); },4000);
+}
+</script>
+</body>
+</html>
