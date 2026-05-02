@@ -1,0 +1,636 @@
+<!--
+  ════════════════════════════════════════════════════════
+  DataClean AI — Analysis Panel (Frontend Addition)
+  ════════════════════════════════════════════════════════
+  
+  Yeh section existing index.html mein add karna hai:
+  
+  1. CSS → <style> tag ke andar copy karo
+  2. HTML → results section ke baad add karo  
+  3. JS → <script> tag mein add karo
+  
+  Ya seedha is standalone file ko dekho aur integrate karo.
+  ════════════════════════════════════════════════════════
+-->
+
+<!-- ═══════════════ CSS ═══════════════ -->
+<style id="analysis-css">
+/* ── ANALYSIS PANEL ── */
+.ai-panel {
+  margin-top: 16px;
+  display: none;
+}
+.ai-panel.show { display: block; animation: fadeUp 0.5s ease; }
+
+/* Score Card */
+.ai-score-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 20px;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 22px 26px;
+  margin-bottom: 14px;
+}
+.score-circle {
+  width: 88px; height: 88px;
+  border-radius: 50%;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  border: 3px solid;
+  flex-shrink: 0;
+}
+.score-circle.great  { border-color: var(--accent);  color: var(--accent);  background: rgba(0,245,170,0.08); }
+.score-circle.good   { border-color: var(--warning);  color: var(--warning); background: rgba(255,200,74,0.08); }
+.score-circle.poor   { border-color: var(--danger);   color: var(--danger);  background: rgba(255,94,122,0.08); }
+.score-num  { font-size: 28px; line-height: 1; }
+.score-lbl  { font-size: 9px; letter-spacing: 0.1em; margin-top: 2px; }
+.score-info { min-width: 0; }
+.score-title { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+.score-summary { font-size: 11px; color: var(--muted2); line-height: 1.6; }
+
+/* Section Headers */
+.ai-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 20px 22px;
+  margin-bottom: 12px;
+}
+.ai-section-hdr {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.ai-section-ic { font-size: 18px; }
+.ai-section-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 13px; font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.ai-section-count {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--muted2);
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  padding: 2px 9px;
+}
+
+/* Key Findings */
+.findings-list { display: flex; flex-direction: column; gap: 8px; }
+.finding-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 13px;
+  background: var(--surface2);
+  border-radius: 8px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text);
+  border-left: 3px solid var(--accent);
+}
+.finding-num {
+  font-family: 'Syne', sans-serif;
+  font-size: 12px; font-weight: 700;
+  color: var(--accent);
+  min-width: 20px;
+  flex-shrink: 0;
+}
+
+/* Column Insights */
+.col-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+}
+.col-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  transition: all 0.2s;
+}
+.col-card:hover { border-color: var(--border2); transform: translateY(-1px); }
+.col-card.good     { border-left: 3px solid var(--accent); }
+.col-card.warning  { border-left: 3px solid var(--warning); }
+.col-card.critical { border-left: 3px solid var(--danger); }
+.col-card-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.col-name { font-size: 12px; font-weight: 600; color: var(--text); }
+.col-type-badge {
+  font-size: 9px; padding: 2px 7px;
+  border-radius: 100px;
+  background: var(--surface3);
+  color: var(--muted2);
+  border: 1px solid var(--border);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.col-health {
+  font-size: 9px; padding: 2px 7px;
+  border-radius: 100px; font-weight: 600;
+}
+.col-health.good     { background: rgba(0,245,170,0.1);   color: var(--accent);  }
+.col-health.warning  { background: rgba(255,200,74,0.1);  color: var(--warning); }
+.col-health.critical { background: rgba(255,94,122,0.1);  color: var(--danger);  }
+.col-insight     { font-size: 11px; color: var(--muted2); line-height: 1.5; margin-bottom: 6px; }
+.col-rec {
+  font-size: 10px; color: var(--accent);
+  background: rgba(0,245,170,0.06);
+  border-radius: 5px; padding: 5px 8px;
+  display: flex; align-items: flex-start; gap: 5px;
+}
+
+/* Anomalies */
+.anomaly-list { display: flex; flex-direction: column; gap: 8px; }
+.anomaly-item {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 14px;
+  background: var(--surface2);
+  border-radius: 9px;
+  border: 1px solid var(--border);
+}
+.anomaly-sev {
+  font-size: 9px; padding: 3px 8px; border-radius: 100px;
+  font-weight: 700; flex-shrink: 0; margin-top: 1px;
+}
+.anomaly-sev.high   { background: rgba(255,94,122,0.15);  color: var(--danger);  border: 1px solid rgba(255,94,122,0.3); }
+.anomaly-sev.medium { background: rgba(255,200,74,0.15);  color: var(--warning); border: 1px solid rgba(255,200,74,0.3); }
+.anomaly-sev.low    { background: rgba(108,99,255,0.15);  color: #a09fff;        border: 1px solid rgba(108,99,255,0.3); }
+.anomaly-body { flex: 1; min-width: 0; }
+.anomaly-type  { font-size: 10px; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 3px; }
+.anomaly-desc  { font-size: 11px; color: var(--text); line-height: 1.5; }
+.anomaly-cols  { font-size: 10px; color: var(--accent); margin-top: 4px; }
+
+/* Business Recommendations */
+.rec-list { display: flex; flex-direction: column; gap: 10px; }
+.rec-item {
+  display: flex; gap: 14px;
+  padding: 14px 16px;
+  background: var(--surface2);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+.rec-pri-bar {
+  width: 4px; border-radius: 100px; flex-shrink: 0;
+  align-self: stretch;
+}
+.rec-pri-bar.high   { background: var(--danger); }
+.rec-pri-bar.medium { background: var(--warning); }
+.rec-pri-bar.low    { background: var(--accent); }
+.rec-body { flex: 1; }
+.rec-title  { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+.rec-desc   { font-size: 11px; color: var(--muted2); line-height: 1.5; margin-bottom: 6px; }
+.rec-impact {
+  font-size: 10px; color: var(--gold);
+  background: rgba(255,200,74,0.06);
+  border-radius: 5px; padding: 4px 8px;
+  display: inline-block;
+}
+.rec-priority-badge {
+  font-size: 9px; padding: 2px 8px;
+  border-radius: 100px; font-weight: 700;
+  flex-shrink: 0; align-self: flex-start; margin-top: 2px;
+}
+.rec-priority-badge.high   { background: rgba(255,94,122,0.15); color: var(--danger); }
+.rec-priority-badge.medium { background: rgba(255,200,74,0.15); color: var(--warning); }
+.rec-priority-badge.low    { background: rgba(0,245,170,0.1);   color: var(--accent); }
+
+/* Patterns */
+.pattern-list { display: flex; flex-direction: column; gap: 8px; }
+.pattern-item {
+  padding: 11px 14px;
+  background: var(--surface2);
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent2);
+}
+.pattern-name { font-size: 11px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+.pattern-desc { font-size: 11px; color: var(--muted2); line-height: 1.5; }
+.pattern-cols { font-size: 10px; color: #a09fff; margin-top: 4px; }
+
+/* Next Steps */
+.steps-list { display: flex; flex-direction: column; gap: 7px; }
+.ns-item {
+  display: flex; align-items: flex-start; gap: 11px;
+  padding: 10px 13px;
+  background: var(--surface2);
+  border-radius: 8px;
+  font-size: 11px; color: var(--text);
+  line-height: 1.5;
+}
+.ns-num {
+  width: 22px; height: 22px;
+  background: var(--accent);
+  color: #050510;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 800;
+  flex-shrink: 0;
+}
+
+/* Analyse Buttons */
+.analyse-bar {
+  display: flex; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.btn-analyse {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 18px;
+  background: linear-gradient(135deg, rgba(108,99,255,0.2), rgba(0,245,170,0.1));
+  border: 1px solid rgba(108,99,255,0.4);
+  border-radius: 10px;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.btn-analyse:hover {
+  border-color: var(--accent2);
+  background: linear-gradient(135deg, rgba(108,99,255,0.3), rgba(0,245,170,0.15));
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(108,99,255,0.2);
+}
+.btn-analyse:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+.btn-analyse .ai-ic { font-size: 16px; }
+
+/* Loading shimmer */
+.ai-loading {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 40px;
+  text-align: center;
+  margin-bottom: 12px;
+}
+.ai-loading-ic { font-size: 36px; animation: pulse-ic 1.5s ease-in-out infinite; margin-bottom: 14px; }
+@keyframes pulse-ic { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.1);opacity:0.7} }
+.ai-loading-t { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+.ai-loading-s { font-size: 11px; color: var(--muted2); }
+.ai-steps { display: flex; flex-direction: column; gap: 6px; margin-top: 18px; max-width: 280px; margin-left: auto; margin-right: auto; }
+.ai-step { display: flex; align-items: center; gap: 9px; font-size: 11px; color: var(--muted2); }
+.ai-step.active { color: var(--accent); }
+.ai-step-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+.ai-step.active .ai-step-dot { background: var(--accent); animation: blink 1s infinite; }
+.ai-step.done .ai-step-dot { background: var(--accent); }
+.ai-step.done { color: var(--accent); opacity: 0.6; }
+</style>
+
+<!-- ═══════════════ HTML ═══════════════ -->
+<!-- 
+  Yeh section results card ke BAAD daalo, reset-btn se pehle:
+  
+  <div class="reset-btn" onclick="resetAll()">...</div>
+  
+  Se pehle insert karo:
+-->
+<div class="analyse-bar" id="analyse-bar" style="display:none;">
+  <button class="btn-analyse" id="auto-analyse-btn" onclick="runAnalysis(true)">
+    <span class="ai-ic">🤖</span>
+    <span>AI Analysis</span>
+  </button>
+  <button class="btn-analyse" style="border-color:rgba(0,245,170,0.3);background:rgba(0,245,170,0.05);" onclick="exportAnalysis()">
+    <span class="ai-ic">📋</span>
+    <span>Report Export</span>
+  </button>
+</div>
+
+<!-- AI Loading State -->
+<div class="ai-loading" id="ai-loading" style="display:none;">
+  <div class="ai-loading-ic">🧠</div>
+  <div class="ai-loading-t">AI Analyse Kar Raha Hai...</div>
+  <div class="ai-loading-s">Data patterns dhundh raha hai</div>
+  <div class="ai-steps">
+    <div class="ai-step" id="ais-1"><div class="ai-step-dot"></div>Column statistics compute ho rahi hain</div>
+    <div class="ai-step" id="ais-2"><div class="ai-step-dot"></div>AI model ko data bhej raha hai</div>
+    <div class="ai-step" id="ais-3"><div class="ai-step-dot"></div>Insights generate ho rahi hain</div>
+    <div class="ai-step" id="ais-4"><div class="ai-step-dot"></div>Recommendations tayyar kar raha hai</div>
+  </div>
+</div>
+
+<!-- AI Analysis Panel -->
+<div class="ai-panel" id="ai-panel">
+
+  <!-- Score -->
+  <div class="ai-score-row" id="ai-score-row">
+    <div class="score-circle" id="score-circle">
+      <div class="score-num" id="score-num">—</div>
+      <div class="score-lbl">SCORE</div>
+    </div>
+    <div class="score-info">
+      <div class="score-title" id="score-title">Data Quality Score</div>
+      <div class="score-summary" id="score-summary">—</div>
+    </div>
+  </div>
+
+  <!-- Key Findings -->
+  <div class="ai-section" id="ai-findings">
+    <div class="ai-section-hdr">
+      <span class="ai-section-ic">🔍</span>
+      <span class="ai-section-title">Key Findings</span>
+      <span class="ai-section-count" id="findings-count">0</span>
+    </div>
+    <div class="findings-list" id="findings-list"></div>
+  </div>
+
+  <!-- Column Insights -->
+  <div class="ai-section" id="ai-cols">
+    <div class="ai-section-hdr">
+      <span class="ai-section-ic">📊</span>
+      <span class="ai-section-title">Column Insights</span>
+      <span class="ai-section-count" id="cols-count">0</span>
+    </div>
+    <div class="col-grid" id="col-grid"></div>
+  </div>
+
+  <!-- Anomalies -->
+  <div class="ai-section" id="ai-anomalies">
+    <div class="ai-section-hdr">
+      <span class="ai-section-ic">⚠️</span>
+      <span class="ai-section-title">Anomalies Detected</span>
+      <span class="ai-section-count" id="anom-count">0</span>
+    </div>
+    <div class="anomaly-list" id="anomaly-list"></div>
+  </div>
+
+  <!-- Business Recommendations -->
+  <div class="ai-section" id="ai-recs">
+    <div class="ai-section-hdr">
+      <span class="ai-section-ic">💡</span>
+      <span class="ai-section-title">Business Recommendations</span>
+      <span class="ai-section-count" id="recs-count">0</span>
+    </div>
+    <div class="rec-list" id="rec-list"></div>
+  </div>
+
+  <!-- Patterns -->
+  <div class="ai-section" id="ai-patterns">
+    <div class="ai-section-hdr">
+      <span class="ai-section-ic">🔗</span>
+      <span class="ai-section-title">Patterns Detected</span>
+      <span class="ai-section-count" id="pat-count">0</span>
+    </div>
+    <div class="pattern-list" id="pattern-list"></div>
+  </div>
+
+  <!-- Next Steps -->
+  <div class="ai-section" id="ai-nextsteps">
+    <div class="ai-section-hdr">
+      <span class="ai-section-ic">🚀</span>
+      <span class="ai-section-title">Next Steps</span>
+    </div>
+    <div class="steps-list" id="steps-list"></div>
+  </div>
+
+</div>
+
+<!-- ═══════════════ JAVASCRIPT ═══════════════ -->
+<script id="analysis-js">
+// ── Analysis State ─────────────────────────
+let AI_ANALYSIS = null;
+let CURRENT_CLEAN_CSV = null; // Set this when cleaning completes
+
+// ── Run Analysis ───────────────────────────
+async function runAnalysis(showLoading = true) {
+  if (!CURRENT_CLEAN_CSV && !S.cleanedData) {
+    toast('error', 'Pehle data clean karo');
+    return;
+  }
+
+  const csvText = CURRENT_CLEAN_CSV || S.cleanedData;
+  const fileId  = S.fileId;
+
+  // Show loading
+  document.getElementById('ai-panel').classList.remove('show');
+  if (showLoading) {
+    document.getElementById('ai-loading').style.display = 'block';
+    animateAISteps();
+  }
+  document.getElementById('auto-analyse-btn').disabled = true;
+  document.getElementById('auto-analyse-btn').innerHTML = '<span class="spin">⟳</span> Analysing...';
+
+  try {
+    // Compute stats client-side
+    const statsResult = computeColStats(csvText);
+
+    // Call backend AI
+    const result = await api('POST', '/api/analyse/run', {
+      file_id:    fileId || 'temp',
+      csv_sample: statsResult.sample_csv,
+      col_stats:  statsResult.col_stats,
+      total_rows: statsResult.total_rows,
+      total_cols: statsResult.total_cols,
+      file_name:  S.uploadedFile?.name || 'data.csv',
+    });
+
+    AI_ANALYSIS = result.parsed;
+
+    // Hide loading, show panel
+    document.getElementById('ai-loading').style.display = 'none';
+    renderAnalysis(result.parsed);
+    toast('success', '🤖 AI Analysis ready!');
+
+  } catch (err) {
+    document.getElementById('ai-loading').style.display = 'none';
+    toast('error', 'AI Analysis failed: ' + err.message);
+    console.error(err);
+  } finally {
+    document.getElementById('auto-analyse-btn').disabled = false;
+    document.getElementById('auto-analyse-btn').innerHTML = '<span class="ai-ic">🤖</span><span>AI Analysis</span>';
+  }
+}
+
+// ── Compute column stats (client-side) ─────
+function computeColStats(csvText) {
+  const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true, dynamicTyping: true });
+  const data   = parsed.data;
+  const fields = parsed.meta.fields || [];
+  const colStats = {};
+
+  fields.forEach(col => {
+    const vals   = data.map(r => r[col]);
+    const nonNull= vals.filter(v => v !== null && v !== undefined && v !== '');
+    const nullCnt= vals.length - nonNull.length;
+    const unique = new Set(vals.map(String)).size;
+
+    const stat = {
+      dtype:        typeof nonNull[0] === 'number' ? 'numeric' : 'object',
+      null_count:   nullCnt,
+      null_pct:     vals.length ? Math.round(nullCnt/vals.length*100*10)/10 : 0,
+      unique_count: unique,
+      total_count:  vals.length,
+    };
+
+    // Numeric
+    const nums = nonNull.filter(v => typeof v === 'number' && !isNaN(v));
+    if (nums.length > nonNull.length * 0.5) {
+      const sorted = [...nums].sort((a,b)=>a-b);
+      const sum    = nums.reduce((a,b)=>a+b,0);
+      stat.mean    = Math.round(sum/nums.length*100)/100;
+      stat.median  = sorted[Math.floor(sorted.length/2)];
+      stat.min     = sorted[0];
+      stat.max     = sorted[sorted.length-1];
+      stat.zeros   = nums.filter(v=>v===0).length;
+      stat.negatives=nums.filter(v=>v<0).length;
+      // IQR outliers
+      const q1 = sorted[Math.floor(sorted.length*0.25)];
+      const q3 = sorted[Math.floor(sorted.length*0.75)];
+      const iqr= q3-q1;
+      stat.outlier_count = nums.filter(v=>v<q1-1.5*iqr||v>q3+1.5*iqr).length;
+    } else {
+      // Categorical
+      const freq = {};
+      nonNull.forEach(v=>{const k=String(v);freq[k]=(freq[k]||0)+1;});
+      const sorted = Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,5);
+      stat.top_values = Object.fromEntries(sorted);
+    }
+    colStats[col] = stat;
+  });
+
+  const sampleRows = data.slice(0,5);
+  const sampleCsv  = fields.join(',') + '\n' +
+    sampleRows.map(r=>fields.map(f=>r[f]??'').join(',')).join('\n');
+
+  return { col_stats: colStats, sample_csv: sampleCsv, total_rows: data.length, total_cols: fields.length };
+}
+
+// ── Animate loading steps ──────────────────
+function animateAISteps() {
+  const steps = ['ais-1','ais-2','ais-3','ais-4'];
+  let i = 0;
+  const iv = setInterval(() => {
+    if (document.getElementById('ai-loading').style.display === 'none') { clearInterval(iv); return; }
+    if (i > 0) { document.getElementById(steps[i-1]).classList.remove('active'); document.getElementById(steps[i-1]).classList.add('done'); }
+    if (i < steps.length) { document.getElementById(steps[i]).classList.add('active'); i++; }
+    else clearInterval(iv);
+  }, 1200);
+}
+
+// ── Render Analysis Panel ──────────────────
+function renderAnalysis(p) {
+  if (!p) return;
+
+  document.getElementById('ai-panel').classList.add('show');
+
+  // Score
+  const score = p.data_quality_score || 0;
+  const circle= document.getElementById('score-circle');
+  const cls   = score >= 80 ? 'great' : score >= 60 ? 'good' : 'poor';
+  const lbl   = score >= 80 ? 'Excellent' : score >= 60 ? 'Good' : 'Needs Work';
+  circle.className = `score-circle ${cls}`;
+  document.getElementById('score-num').textContent   = score;
+  document.getElementById('score-title').textContent = `Data Quality: ${lbl}`;
+  document.getElementById('score-summary').textContent= p.summary || '';
+
+  // Key Findings
+  const findings = p.key_findings || [];
+  document.getElementById('findings-count').textContent = findings.length;
+  document.getElementById('findings-list').innerHTML = findings.map((f,i) =>
+    `<div class="finding-item"><span class="finding-num">${i+1}</span><span>${f}</span></div>`
+  ).join('');
+
+  // Column Insights
+  const cols = p.column_insights || [];
+  document.getElementById('cols-count').textContent = cols.length;
+  document.getElementById('col-grid').innerHTML = cols.map(c => `
+    <div class="col-card ${c.health || 'good'}">
+      <div class="col-card-hdr">
+        <span class="col-name">${c.column}</span>
+        <span class="col-type-badge">${c.type || 'unknown'}</span>
+      </div>
+      <div style="margin-bottom:8px;">
+        <span class="col-health ${c.health || 'good'}">${healthLabel(c.health)}</span>
+      </div>
+      <div class="col-insight">${c.insight || ''}</div>
+      ${c.recommendation ? `<div class="col-rec">💡 ${c.recommendation}</div>` : ''}
+    </div>`).join('');
+
+  // Anomalies
+  const anoms = p.anomalies || [];
+  document.getElementById('anom-count').textContent = anoms.length;
+  document.getElementById('anomaly-list').innerHTML = anoms.length
+    ? anoms.map(a => `
+      <div class="anomaly-item">
+        <span class="anomaly-sev ${a.severity || 'low'}">${(a.severity||'low').toUpperCase()}</span>
+        <div class="anomaly-body">
+          <div class="anomaly-type">${(a.type||'').replace(/_/g,' ')}</div>
+          <div class="anomaly-desc">${a.description || ''}</div>
+          ${(a.columns_affected||[]).length ? `<div class="anomaly-cols">Columns: ${a.columns_affected.join(', ')}</div>` : ''}
+        </div>
+      </div>`).join('')
+    : '<div style="font-size:11px;color:var(--accent);padding:8px;">✅ Koi anomaly detect nahi hui!</div>';
+
+  // Business Recommendations
+  const recs = p.business_recommendations || [];
+  document.getElementById('recs-count').textContent = recs.length;
+  document.getElementById('rec-list').innerHTML = recs.map(r => `
+    <div class="rec-item">
+      <div class="rec-pri-bar ${r.priority || 'low'}"></div>
+      <div class="rec-body">
+        <div class="rec-title">${r.title || ''}</div>
+        <div class="rec-desc">${r.description || ''}</div>
+        ${r.impact ? `<div class="rec-impact">📈 ${r.impact}</div>` : ''}
+      </div>
+      <span class="rec-priority-badge ${r.priority || 'low'}">${(r.priority||'low').toUpperCase()}</span>
+    </div>`).join('');
+
+  // Patterns
+  const pats = p.patterns_detected || [];
+  document.getElementById('pat-count').textContent = pats.length;
+  document.getElementById('pattern-list').innerHTML = pats.length
+    ? pats.map(pt => `
+      <div class="pattern-item">
+        <div class="pattern-name">${pt.pattern || ''}</div>
+        <div class="pattern-desc">${pt.description || ''}</div>
+        ${(pt.columns||[]).length ? `<div class="pattern-cols">📌 ${pt.columns.join(', ')}</div>` : ''}
+      </div>`).join('')
+    : '<div style="font-size:11px;color:var(--muted2);padding:8px;">Koi significant pattern detect nahi hua</div>';
+
+  // Next Steps
+  const ns = p.next_steps || [];
+  document.getElementById('steps-list').innerHTML = ns.map((s,i) =>
+    `<div class="ns-item"><div class="ns-num">${i+1}</div><span>${s}</span></div>`
+  ).join('');
+}
+
+function healthLabel(h) {
+  return h === 'good' ? '✅ Good' : h === 'warning' ? '⚠️ Warning' : '🔴 Critical';
+}
+
+// ── Export Analysis as text ────────────────
+function exportAnalysis() {
+  if (!AI_ANALYSIS) { toast('error', 'Pehle analysis run karo'); return; }
+  const p = AI_ANALYSIS;
+  let txt = `DataClean AI — Analysis Report\n${'═'.repeat(44)}\n\n`;
+  txt += `Data Quality Score: ${p.data_quality_score}/100\n\n`;
+  txt += `Summary:\n${p.summary}\n\n`;
+  txt += `Key Findings:\n${(p.key_findings||[]).map((f,i)=>`  ${i+1}. ${f}`).join('\n')}\n\n`;
+  txt += `Anomalies:\n${(p.anomalies||[]).map(a=>`  [${a.severity?.toUpperCase()}] ${a.type}: ${a.description}`).join('\n')}\n\n`;
+  txt += `Business Recommendations:\n${(p.business_recommendations||[]).map(r=>`  [${r.priority?.toUpperCase()}] ${r.title}: ${r.description}`).join('\n')}\n\n`;
+  txt += `Next Steps:\n${(p.next_steps||[]).map((s,i)=>`  ${i+1}. ${s}`).join('\n')}\n`;
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([txt],{type:'text/plain'}));
+  a.download='ai_analysis_report.txt';a.click();
+  toast('success','Analysis report export ho gayi!');
+}
+
+// ── Hook into existing showResults ─────────
+// Existing showResults function ke end mein yeh add karo:
+const _origShowResults = window.showResults || function(){};
+window.showResults = function(result) {
+  _origShowResults(result);
+  CURRENT_CLEAN_CSV = result.clean_csv;
+  // Show analyse bar
+  document.getElementById('analyse-bar').style.display = 'flex';
+  // Auto analyse
+  setTimeout(() => runAnalysis(true), 800);
+};
+</script>
